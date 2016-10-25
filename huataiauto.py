@@ -6,35 +6,79 @@ import subprocess
 import ctypes
 import automation
 
-window = automation.WindowControl(searchDepth = 1, Name = '网上股票交易系统5.0')
+window = automation.WindowControl(searchDepth = 1, ClassName = 'TdxW_MainFrame_Class')
 print(window)
-fbtn=automation.TreeItemControl(searchFromControl = window,Name="卖出[F2]")
+fbtn=automation.TreeItemControl(searchFromControl = window,Name="买入")
 print(fbtn)
 #fbtn.Click()
-actionTree=automation.TreeControl(searchFromControl=window,AutomationId="129")
+actionTree=automation.TreeControl(searchFromControl=window,AutomationId="59648")
+print(actionTree)
 
-
+def clickSwitchBtn(name):
+    btn=automation.ButtonControl(searchFromControl=window,Name=name)
+    btn.Invoke();
+    
 def buyAction(code,price,count):
-    window.SendKeys("{F1}")
-    panel=automation.PaneControl(searchFromControl=window,ClassName="#32770")
+    clickSwitchBtn("买入");
+    panel=automation.PaneControl(searchFromControl=window,AutomationId="59649")
     print(panel)
-    codeTxt=automation.EditControl(searchFromControl=panel,AutomationId="1032")
+    codeTxt=automation.EditControl(searchFromControl=panel,AutomationId="12005")
     codeTxt.SetValue(code)
-    priceTxt=automation.EditControl(searchFromControl=panel,AutomationId="1033")
+    priceTxt=automation.EditControl(searchFromControl=panel,AutomationId="12006")
     priceTxt.SetValue(str(price))
-    countTxt=automation.EditControl(searchFromControl=panel,AutomationId="1034")
+    countTxt=automation.EditControl(searchFromControl=panel,AutomationId="12007")
     countTxt.SetValue(str(count))
 
-    buyBtn=automation.ButtonControl(searchFromControl=panel,AutomationId="1006")
+    buyBtn=automation.ButtonControl(searchFromControl=panel,AutomationId="2010")
     buyBtn.Click(simulateMove=False)
-
-    alertwindow=automation.PaneControl(searchDepth = 1,searchFromControl=window,ClassName="#32770")
-
-    sureBtn=automation.ButtonControl(searchFromControl=alertwindow,AutomationId="6")
-    print(sureBtn)
+    sureBtn=automation.ButtonControl(searchFromControl=window,AutomationId="7015")
     sureBtn.Click(simulateMove=False)
-    #sureBtn.Click(simulateMove=False)
 
+
+def sellAction(code,price,count):
+    clickSwitchBtn("卖出");
+    panel=automation.PaneControl(searchFromControl=window,AutomationId="59649")
+    codeTxt=automation.EditControl(searchFromControl=panel,AutomationId="12005")
+    codeTxt.SetValue(code)
+    priceTxt=automation.EditControl(searchFromControl=panel,AutomationId="12006")
+    priceTxt.SetValue(str(price))
+    countTxt=automation.EditControl(searchFromControl=panel,AutomationId="12007")
+    countTxt.SetValue(str(count))
+
+    sellBtn=automation.ButtonControl(searchFromControl=panel,AutomationId="2010")
+    sellBtn.Click(simulateMove=False)
+
+    sureBtn=automation.ButtonControl(searchFromControl=window,AutomationId="7015")
+    sureBtn.Click(simulateMove=False)
+    sureBtn=automation.ButtonControl(searchFromControl=window,AutomationId="7015")
+    sureBtn.Click(simulateMove=False)
+
+
+def parseOrderInfo(stockItem):
+    rst={}
+    childs=stockItem.GetChildren()
+    for i in range(0,len(childs)):
+        #print(i)
+        rst[orderInfoList[i]]=childs[i].Name
+    return rst
+
+orderInfoList=["time","code","name","action","state","price","count","id","dealprice","dealcount","type","account"]
+def getOrdersInfo(itemList):
+    rst=[]
+    for item in itemList:
+        if isinstance(item,automation.ListItemControl):
+            rst.append(parseOrderInfo(item))
+
+    return rst;
+
+def getOrderInfo():
+    clickSwitchBtn("撤单");
+    stockPane=automation.ListControl(searchFromControl=window,AutomationId="1567")
+    stocks=stockPane.GetChildren()
+    stockList=getOrdersInfo(stocks);
+    print(stockList)
+    
+    
 def getTreeItem(tree,name):
     item=automation.TreeItemControl(searchFromControl = tree,Name=name)
     return item
@@ -51,19 +95,62 @@ myInfoDic={
     "stock":"1014",
     "all":"1015"
     }
-
-def getMyInfo():
-    btn=getTreeItem(actionTree,"资金股票")
-    btn.Click(simulateMove=False)
-    infoPane=automation.PaneControl(searchFromControl=window,AutomationId="59649")
+def parseMyInfo(msg):
+    msgs=msg.split("  ")
     rst={}
-    #rst["allmoney"]=getTxtFromPane(infoPane,"1012")
+    for key in msgs:
+        key=key.strip()
+        if key.find(":")>=0:
+            arr=key.split(":")
+            rst[arr[0]]=arr[1]
+    return rst
+
+def getChildsByClz(pane,clz):
+    rst=[]
+    itemList=pane.GetChildren()
+    for item in itemList:
+        if isinstance(item,clz):
+            rst.append(rst)
+
+    return rst;
+
+stockInfoList=["code","name","count","count","avg_cost","price","value","lost","lostpercent","account"]
+def parseStockInfo(stockItem):
+    rst={}
+    childs=stockItem.GetChildren()
+    for i in range(0,len(childs)):
+        rst[stockInfoList[i]]=childs[i].Name
+    return rst
+
+
+def getStocksInfo(itemList):
+    rst=[]
+    for item in itemList:
+        if isinstance(item,automation.ListItemControl):
+            rst.append(parseStockInfo(item))
+
+    return rst;
+    
+    
+def getMyInfo():
+    clickSwitchBtn("持仓")
+    infoPane=automation.PaneControl(searchFromControl=window,AutomationId="59649")
+
+    info=getTxtFromPane(infoPane,"1576")
+    print(info)
+    rst=parseMyInfo(info)
+    stockPane=automation.ListControl(searchFromControl=infoPane,AutomationId="1567")
+    stocks=stockPane.GetChildren()
+    stockList=getStocksInfo(stocks);
+    print(stockList)
+
+
+    
+def haha():
     for key in myInfoDic:
         rst[key]=getTxtFromPane(infoPane,myInfoDic[key])
         
     print(rst)
-    
-
     
     
     
@@ -71,3 +158,5 @@ def getMyInfo():
     
 getMyInfo()
 #buyAction("600213",14.00,100)
+#sellAction("002751",100.00,100)
+#getOrderInfo()
